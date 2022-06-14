@@ -1,0 +1,155 @@
+---
+title: "Respostas: Seleção da vaga de analista de dados"
+subtitle: ""
+author: "Candidato: Silvano Barbosa de Oliveira"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Análise exploratória dos dados - Parte 1
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(readxl)
+library(reshape2)
+library(ggplot2)
+
+db=data.frame(read_excel("C:/Users/Silvano/Downloads/2020_Statistical_Annex_Table_4.xlsx",sheet = "Table 4", 
+              col_types = c("numeric","text", "numeric", "skip", "text","skip", "numeric", "skip", "numeric",
+                            "skip", "numeric", "skip", "numeric","skip", "numeric", "skip", "numeric",
+                            "skip", "numeric", "skip", "numeric","skip", "numeric", "skip", "numeric","skip"), skip = 5))
+
+db$HDI_class=NA
+db[is.na(db$HDI.rank)==T,]$HDI_class=db[is.na(db$HDI.rank)==T,]$Country
+
+for(i in 3:nrow(db)){
+  db$HDI_class[i]=ifelse(is.na(db$HDI_class[i]),db$HDI_class[i-1],db$HDI_class[i])
+}
+
+
+db=db[is.na(db$HDI.rank)==F,]
+names(db)=c("rank","country","GDI_value","GDI_group","HDI_female","HDI_male","expect_female","expect_male",
+            "expect_school_female","expect_school_male","years_school_female","years_school_male","income_female","income_male","HDI_class")
+
+temp1=db[,c("rank","country","GDI_value","GDI_group","HDI_female","expect_female","expect_school_female","years_school_female","income_female","HDI_class")]
+temp2=db[,c("rank","country","GDI_value","GDI_group","HDI_male","expect_male","expect_school_male","years_school_male","income_male","HDI_class")]
+
+names(temp1)=c("rank","country","GDI_value","GDI_group","HDI","expect","expect_school","years_school","income","HDI_class")
+names(temp2)=c("rank","country","GDI_value","GDI_group","HDI","expect","expect_school","years_school","income","HDI_class")
+
+temp1$gender="Female"
+temp2$gender="Male"
+
+db2=rbind(temp1,temp2)
+rm(temp1,temp2)
+
+ggplot(data.frame(db2),aes(x=gender,y=HDI))+
+  geom_boxplot()+
+  theme_classic()+
+  theme(axis.text.x = element_text(color = "grey20", size = 12, angle = 0, hjust = .5, vjust = .5, face = "plain"),
+        axis.text.y = element_text(color = "grey20", size = 12, angle = 0, hjust = 1, vjust = 0, face = "plain"),  
+        axis.title.x = element_text(color = "grey20", size = 16, angle = 0, hjust = .5, vjust = 0, face = "plain"),
+        axis.title.y = element_text(color = "grey20", size = 16, angle = 90, hjust = .5, vjust = .5, face = "plain"),
+        legend.text=element_text(size = 16),
+        text=element_text(size = 16),
+        title = element_text(size = 16),
+        strip.text = element_text(size=16))+
+  guides(fill=guide_legend(nrow=1,byrow=TRUE))+
+  guides(colour = guide_legend(nrow = 1))+
+  labs(x="Gender",y="HDI")
+
+```
+
+Incluído boxplot para conhecer a distribuição dos dados de IDH estratificado por sexo com o intuito de verificar possível diferenças entre os grupos. Visualizando somente o gráfico, há indicativo de que o grupo masculino possui mais alto IDH em comparação com o grupo feminino. O que também foi confirmado pelo teste de Wilcoxon, mostrando que há diferença estatisticamente significativa entre os dois grupos, confirmando que o grupo masculino possui IDH maior que o feminino, considerando o nível de significância de 5%.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+print(paste0("Teste de Wilcoxon para avaliação de diferença. Valor de p = ",round(wilcox.test(db2$HDI~db2$gender)$p.value,4)))
+
+```
+
+## Análise exploratória dos dados - Parte 2
+Avaliando se há diferenças entre os IDH segundo classificação do IDH dos países, verifica-se que a diferença entre os gêneros se mantém, o que indica que não é um fator que possa explicar as diferenças entre os gêneros.
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(data.frame(db2),aes(x=HDI_class,y=HDI,fill=gender))+
+  geom_boxplot()+
+  theme_classic()+
+  theme(legend.position = "bottom")+
+  theme(axis.text.x = element_text(color = "grey20", size = 12, angle = 0, hjust = .5, vjust = .5, face = "plain"),
+        axis.text.y = element_text(color = "grey20", size = 12, angle = 0, hjust = 1, vjust = 0, face = "plain"),  
+        axis.title.x = element_text(color = "grey20", size = 16, angle = 0, hjust = .5, vjust = 0, face = "plain"),
+        axis.title.y = element_text(color = "grey20", size = 16, angle = 90, hjust = .5, vjust = .5, face = "plain"),
+        legend.text=element_text(size = 16),
+        text=element_text(size = 16),
+        title = element_text(size = 16),
+        strip.text = element_text(size=16))+
+  guides(fill=guide_legend(nrow=1,byrow=TRUE))+
+  guides(colour = guide_legend(nrow = 1))+
+  labs(x="Classification",y="HDI",fill="")+
+  coord_flip()
+  
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+tab1=data.frame(Classification=unique(db2$HDI_class),`p-value`=NA)
+for(i in unique(db2$HDI_class)){
+  tab1[tab1$Classification==i,]$p.value=round(wilcox.test(db2[db2$HDI_class==i,]$HDI~db2[db2$HDI_class==i,]$gender)$p.value,4)
+}
+
+knitr::kable(tab1, caption = '')
+
+```
+
+
+Uma  outra opção seria avaliar também se há diferenças entre gênero segundo o Índice de Desenvolvimento de Gênero, dessa forma, foram avaliados o IDH por gênero, estratificando pela classificação do IDG. Há indícios de que um possível indicador que pode influenciar o o resultado do teste de comparação do IDH por gênero é o IDG, em que alguns grupos indicam não possuir diferenças significativas e essas diferenças se intensificam mais em uns grupos que em outros.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(data.frame(db2[which(db2$GDI_group!=".."),]),aes(x=GDI_group,y=HDI,fill=gender))+
+  geom_boxplot()+
+  theme_classic()+
+  theme(legend.position = "bottom")+
+  theme(axis.text.x = element_text(color = "grey20", size = 12, angle = 0, hjust = .5, vjust = .5, face = "plain"),
+        axis.text.y = element_text(color = "grey20", size = 12, angle = 0, hjust = 1, vjust = 0, face = "plain"),  
+        axis.title.x = element_text(color = "grey20", size = 16, angle = 0, hjust = .5, vjust = 0, face = "plain"),
+        axis.title.y = element_text(color = "grey20", size = 16, angle = 90, hjust = .5, vjust = .5, face = "plain"),
+        legend.text=element_text(size = 16),
+        text=element_text(size = 16),
+        title = element_text(size = 16),
+        strip.text = element_text(size=16))+
+  guides(fill=guide_legend(nrow=1,byrow=TRUE))+
+  guides(colour = guide_legend(nrow = 1))+
+  labs(x="GDI group",y="HDI",fill="")
+  
+```
+
+A tabela abaixo mostra o resultado das comparações de gênero por cada uma das classificações dos grupos de IDG.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+tab2=data.frame(`GDI group`=unique(db2[which(db2$GDI_group!=".."),]$GDI_group),`p-value`=NA)
+for(i in unique(db2[which(db2$GDI_group!=".."),]$GDI_group)){
+  tab2[tab2$GDI.group==i,]$p.value=round(wilcox.test(db2[db2$GDI_group==i,]$HDI~db2[db2$GDI_group==i,]$gender)$p.value,4)
+}
+
+knitr::kable(tab2, caption = '')
+
+```
+
+
+## Análise exploratória dos dados - Parte 3
+
+Uma possível avaliação, seria também verificar se as demais variáveis estão associadas com o IDH. Uma forma de verificar é utilizando a matriz de correlação entre as variáveis, com os respectivos valores, teste de significância da correlação e os gráficos (scatterplot e histograma).
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library("PerformanceAnalytics")
+
+chart.Correlation(db2[,c("HDI","expect","expect_school","years_school","income")], histogram=TRUE, pch=19)
+
+```
+
+Verificando os gráficos, observa-se forte associação entre o IDH e as demais variáveis coletadas. Indicando que são potenciais preditores do IDH.
